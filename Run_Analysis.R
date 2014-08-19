@@ -15,7 +15,7 @@ SlimTestSet <- TestSet[, c(1:6, 41:46, 81:86, 121:126, 161:166, 201:202,
                              214:215, 227:228, 240:241, 253:254, 266:217, 
                              345:350, 424:429, 503:504, 516:517, 529:530, 
                              542:543)]
-# Combine activity labels and subject id colums with data subset 
+# Combine activity labels and subject id colums with 'Test' dataset 
 tLabels <- read.table("./test/Y_Test.txt")
 tSubs <- read.table("./test/subject_test.txt")
 CompTset <- cbind(tSubs, tLabels, SlimTestSet)
@@ -30,17 +30,37 @@ ySubs <- read.table("./train/subject_train.txt")
 CompYset <- cbind(ySubs, yLabels, SlimTrainSet)
 #Merge two datasets 
 CompSet <- rbind(CompTset, CompYset)
-# Rename columns and replace activity numbers with descriptive names
+# Rename columns  
 b <- read.table("./features.txt")
 b1 <- as.vector(b[c(1:6, 41:46, 81:86, 121:126, 161:166, 201:202, 
                     214:215, 227:228, 240:241, 253:254, 266:217, 
                     345:350, 424:429, 503:504, 516:517, 529:530, 
                     542:543), 2])
 colnames(CompSet) <- c("Subject_id", "Activity", b1)
-CompSet[(CompSet$Activity == "1"), ] <- CompSet[(CompSet$Activity =="Walking"), ]
-CompSet$Activity[CompSet$Activity == "1"] <- CompSet$Activity[CompSet$Activity == "Walking"] 
-CompSet$Activity[CompSet$Activity == "2"] <- CompSet$Activity[CompSet$Activity=="Walk_Upstairs"]               
-CompSet$Activity[CompSet$Activity == "3"] <- CompSet$Activity[CompSet$Activity == "Walk_Downstairs"]
-CompSet$Activity[CompSet$Activity == "4"] <- CompSet$Activity[CompSet$Activity == "Sitting"]
-CompSet$Activity[CompSet$Activity == "5"] <- CompSet$Activity[CompSet$Activity == "Standing"]
-CompSet$Activity[CompSet$Activity == "6"] <- CompSet$Activity[CompSet$Activity == "Laying"]
+# Replace activity numbers with descriptive names
+CompSet$Activity <- as.character(CompSet$Activity)  
+CompSet$Activity[CompSet$Activity == "1"] <- "Walking"
+CompSet$Activity[CompSet$Activity=="2"] <- "Walk_Upstairs"               
+CompSet$Activity[CompSet$Activity == "3"] <- "Walk_Downstairs"
+CompSet$Activity[CompSet$Activity == "4"] <- "Sitting"
+CompSet$Activity[CompSet$Activity == "5"] <- "Standing"
+CompSet$Activity[CompSet$Activity == "6"] <- "Laying"
+# Create tidy new dataset with the average of each variable for each activity
+# and each subject 
+Library("reshape2")
+bb <- CompSet[3:112]
+CompSet$Activity <- rownames(CompSet)
+meltCompSet <- melt(CompSet, id=c("Subject_id", "Activity"), 
+                    measure.vars=c(bb))
+# Create three separate tables to maintain data tidiness 
+Subject <- dcast(meltCompSet, Subject_id ~ variable, mean)
+Activity <- dcast(meltCompSet, Activity ~ variable, mean)
+# Not sure this will work - must create new rownames for UserTotalAvg,
+# User_Activity and Activity_Total, have the totals already, now need to 
+# calculate individual CompSet$Activity=="Walking" by 
+#Compset$Subject_id=="1:30"
+FinalTidy <- rbind(Subject, Activity)
+
+SubjectActivity <- dcast(meltCompSet, Subject_id ~ Activity, mean)
+# Write final text file
+write.table(FinalTidy, file="./AverageMeasurementValuesbySubjectandActivity.txt", row.name=FALSE)
