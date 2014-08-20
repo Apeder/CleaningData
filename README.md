@@ -25,7 +25,8 @@ The dataset includes the following files:
 
 Notes: 
 ======
-- Features are normalized and bounded within [-1,1].
+- Features are normalized and bounded within [-1,1]
+- When reading 'AverageMeasurementValuesbySubjectandActivity.txt', use header=TRUE to preserve column names. 
 
 For more information about the original dataset contact: activityrecognition@smartlab.ws
 
