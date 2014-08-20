@@ -6,37 +6,41 @@ fileURL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%2
 download.file(fileURL, destfile = "./PhoneData/Raw.zip", method="curl")
 Datedownloaded <- date()
 #"Mon Aug 18 12:35:06 2014"
+
 # Unzip files and navigate to directory with files
 unzip("./PhoneData/Raw.zip")
 setwd("~/Rfiles/CleaningData/UCI HAR Dataset")
-# Load data values for 'Test' dataset and extract desired columns
+
+# Load data values for 'Test' dataset and extract only columns with 
+# mean and standard deviation values
 TestSet <- read.table("./test/X_test.txt")
-SlimTestSet <- TestSet[, c(1:6, 41:46, 81:86, 121:126, 161:166, 201:202, 
-                             214:215, 227:228, 240:241, 253:254, 266:217, 
-                             345:350, 424:429, 503:504, 516:517, 529:530, 
-                             542:543)]
-# Combine activity labels and subject id colums with 'Test' dataset 
+a <- c(1:6, 41:46, 81:86, 121:126, 161:166, 201:202, 
+       214:215, 227:228, 240:241, 253:254, 266:271, 
+       345:350, 424:429, 503:504, 516:517, 529:530, 
+       542:543)
+SlimTestSet <- TestSet[, a]
+
+# Combine activity labels (tLabels) and subject id numbers (tSubs) with 
+#'Test' dataset 
 tLabels <- read.table("./test/Y_Test.txt")
 tSubs <- read.table("./test/subject_test.txt")
 CompTset <- cbind(tSubs, tLabels, SlimTestSet)
+
 # Repeat process for 'Train' dataset
 TrainSet <- read.table("./train/X_train.txt")
-SlimTrainSet <- TrainSet[, c(1:6, 41:46, 81:86, 121:126, 161:166, 201:202, 
-                           214:215, 227:228, 240:241, 253:254, 266:217, 
-                           345:350, 424:429, 503:504, 516:517, 529:530, 
-                           542:543)]
+SlimTrainSet <- TrainSet[, a]
 yLabels <- read.table("./train/y_train.txt")
 ySubs <- read.table("./train/subject_train.txt")
 CompYset <- cbind(ySubs, yLabels, SlimTrainSet)
-#Merge two datasets 
+
+#Merge the two datasets 
 CompSet <- rbind(CompTset, CompYset)
+
 # Rename columns  
 b <- read.table("./features.txt")
-b1 <- as.vector(b[c(1:6, 41:46, 81:86, 121:126, 161:166, 201:202, 
-                    214:215, 227:228, 240:241, 253:254, 266:217, 
-                    345:350, 424:429, 503:504, 516:517, 529:530, 
-                    542:543), 2])
+b1 <- as.vector(b[a, 2])
 colnames(CompSet) <- c("Subject_id", "Activity", b1)
+
 # Replace activity numbers with descriptive names
 CompSet$Activity <- as.character(CompSet$Activity)  
 CompSet$Activity[CompSet$Activity == "1"] <- "Walking"
@@ -45,22 +49,20 @@ CompSet$Activity[CompSet$Activity == "3"] <- "Walk_Downstairs"
 CompSet$Activity[CompSet$Activity == "4"] <- "Sitting"
 CompSet$Activity[CompSet$Activity == "5"] <- "Standing"
 CompSet$Activity[CompSet$Activity == "6"] <- "Laying"
+CompSet <- arrange(CompSet, Subject_id, Activity)
+
 # Create tidy new dataset with the average of each variable for each activity
 # and each subject 
-Library("reshape2")
-bb <- CompSet[3:112]
-CompSet$Activity <- rownames(CompSet)
-meltCompSet <- melt(CompSet, id=c("Subject_id", "Activity"), 
-                    measure.vars=c(bb))
-# Create three separate tables to maintain data tidiness 
-Subject <- dcast(meltCompSet, Subject_id ~ variable, mean)
-Activity <- dcast(meltCompSet, Activity ~ variable, mean)
-# Not sure this will work - must create new rownames for UserTotalAvg,
-# User_Activity and Activity_Total, have the totals already, now need to 
-# calculate individual CompSet$Activity=="Walking" by 
-#Compset$Subject_id=="1:30"
-FinalTidy <- rbind(Subject, Activity)
+attach(CompSet)
+aggdata <-aggregate(CompSet[3:68], by=list(Subject_id, Activity), 
+                    FUN=mean, na.rm=TRUE)
+detach(CompSet)
 
-SubjectActivity <- dcast(meltCompSet, Subject_id ~ Activity, mean)
+#Rename first two columns 
+names(aggdata)[names(aggdata)=="Group.1"] <- "Subject_id"
+names(aggdata)[names(aggdata)=="Group.2"] <- "Activity"
+
 # Write final text file
-write.table(FinalTidy, file="./AverageMeasurementValuesbySubjectandActivity.txt", row.name=FALSE)
+write.table(aggdata, 
+            file="~/Rfiles/CleaningData/AverageMeasurementValuesbySubjectandActivity.txt", 
+            row.name=FALSE)
